@@ -1,0 +1,17 @@
+I have a Windows 11 Pro laptop, running WSL2 with OpenSUSE Tumbleweed with systemd & mirrored networking.  I have three virtual machines running MicroOS.
+I want to create a lab configuration so that the workload on the Hyper-V VMs can run and interact only with themselves and the WSL2 OpenSUSE Tumbleweed instance.
+The VMs:
+- mos01 (Tumbleweed)
+  - eth0 172.16.0.11/27
+  - eth1 172.16.1.11/27
+- mos02 (Tumbleweed)
+  - eth0 172.16.0.12/27
+  - eth1 172.16.1.12/27
+- mos03 (Tumbleweed)
+  - eth0 172.16.0.13/27
+  - eth1 172.16.1.13/27
+In these network configurations, I've earmarked eth0 interfaces with 172.16.0.0/27 for private application cluster communications.
+I intend for the eth1 interfaces with 172.16.1.0/27 for front-end traffic, and I will instantiate VIPs as needed, starting from 172.16.1.30, and decreasing as I need them.
+
+Help me with additional configuration so that the 172.16.1.0/27 network can have ingress & egress internet traffic through the WSL 2 OpenSUSE Tumbleweed instance.
+Also specify reasonable firewall controls for this lab environment.
