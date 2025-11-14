@@ -1,0 +1,67 @@
+Great question! In your current design, the MicroOS VMs are isolated on the **172.16.1.0/27 frontend network**, and WSL2 acts as their gateway to the internet. For DNS resolution, you have a few options:
+
+***
+
+### ✅ **Option 1: Use WSL2 as a DNS Forwarder**
+
+*   Install and configure **dnsmasq** or **systemd-resolved** on WSL2.
+*   Point VMs’ `/etc/resolv.conf` to `172.16.1.1` (WSL2 lab IP).
+*   WSL2 forwards DNS queries to your Windows host or an external DNS (e.g., 8.8.8.8).
+
+Example on WSL2:
+
+```bash
+sudo zypper install dnsmasq
+echo "server=8.8.8.8" | sudo tee -a /etc/dnsmasq.conf
+sudo systemctl enable --now dnsmasq
+```
+
+On VMs:
+
+```bash
+echo "nameserver 172.16.1.1" | sudo tee /etc/resolv.conf
+```
+
+***
+
+### ✅ **Option 2: Use Windows Host DNS Directly**
+
+*   Since WSL2 is mirrored, it can reach the same DNS servers as Windows.
+*   Configure VMs to use the same DNS servers as your Windows host (e.g., your router or corporate DNS).
+*   Add:
+
+```bash
+echo "nameserver <Windows DNS IP>" | sudo tee /etc/resolv.conf
+```
+
+***
+
+### ✅ **Option 3: Hybrid Approach**
+
+*   WSL2 runs a DNS forwarder for lab VMs.
+*   WSL2 can also provide **split-horizon DNS** if you want custom names for VMs (e.g., `mos01.lab.local`).
+*   Add entries in `/etc/hosts` or configure dnsmasq with:
+
+<!---->
+
+    address=/mos01.lab.local/172.16.1.11
+    address=/mos02.lab.local/172.16.1.12
+    address=/mos03.lab.local/172.16.1.13
+
+***
+
+### ✅ **Best Practice for Your Lab**
+
+*   Use **Option 1** (WSL2 as DNS forwarder) because:
+    *   Keeps lab self-contained.
+    *   Allows custom hostnames for VMs.
+    *   Avoids dependency on external DNS for internal names.
+
+***
+
+Do you want me to:
+
+*   **Write a full dnsmasq configuration for WSL2** (including custom hostnames for mos01, mos02, mos03)?
+*   Or **configure systemd-resolved with DNS forwarding and local zones** for better integration?
+
+Also, should I include **firewall rules for DNS traffic (UDP/TCP 53)** in the lab zone?
