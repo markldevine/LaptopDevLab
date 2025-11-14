@@ -1,0 +1,65 @@
+Here’s a **detailed ASCII topology diagram with zones and firewall flows**:
+
+                              [ Internet ]
+                                   |
+                                   |
+                         +----------------------+
+                         | Windows 11 Host NIC |
+                         |  IP: 192.168.x.x    |
+                         +----------------------+
+                                   |
+                                   | (Mirrored Networking)
+                                   |
+                         +-----------------------------+
+                         | WSL2 Tumbleweed (Gateway)  |
+                         |-----------------------------|
+                         | eth0: 192.168.x.x (public) |
+                         | ethX: 172.16.1.1 (lab)     |
+                         +-----------------------------+
+                                   |
+                    (Hyper-V Internal Switch: Lab Zone)
+                                   |
+            -------------------------------------------------
+            |                   |                   |
+    +----------------+   +----------------+   +----------------+
+    |    mos01       |   |    mos02       |   |    mos03       |
+    |----------------|   |----------------|   |----------------|
+    | eth0: 172.16.0.11 |  eth0: 172.16.0.12 |  eth0: 172.16.0.13 |
+    | eth1: 172.16.1.11 |  eth1: 172.16.1.12 |  eth1: 172.16.1.13 |
+    +----------------+   +----------------+   +----------------+
+
+    Zones:
+    -------
+    [ public zone ]: WSL2 eth0 (Internet)
+        - Outbound: allow all
+        - Inbound: deny except established connections
+
+    [ lab zone ]: WSL2 ethX (172.16.1.0/27)
+        - Allow SSH, HTTP, HTTPS from VMs
+        - Masquerade traffic to public zone
+        - Drop all other inbound from lab
+
+    [ cluster zone ]: VM eth0 (172.16.0.0/27)
+        - Allow cluster traffic only (e.g., pacemaker, corosync)
+        - Drop all internet-bound traffic
+
+    Firewall Flow:
+    --------------
+    VMs (172.16.1.x) ---> WSL2 (lab zone) ---> NAT ---> WSL2 (public zone) ---> Internet
+    Internet ---> WSL2 (public zone) ---> [OPTIONAL ingress rules] ---> VMs (lab zone)
+
+    VIPs:
+    -----
+    172.16.1.30 ↓ for frontend services (managed by keepalived/pacemaker)
+
+***
+
+✅ This diagram shows:
+
+*   **Zones** and their firewall policies.
+*   **Traffic flow** for egress and optional ingress.
+*   **Cluster isolation** on 172.16.0.0/27.
+
+***
+
+Do you want me to **write the full firewall-cmd configuration script for WSL2 and VMs based on this diagram**? Or should I also **include routing commands for VMs and WSL2 in the same script** for a complete setup?
