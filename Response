@@ -1,0 +1,87 @@
+Ah, keeping WSL2 in **mirrored networking mode** changes the approach because WSL2 will share the host’s network stack rather than having its own NAT-managed interface. This means:
+
+*   WSL2 will appear on the same network as your Windows host (bridged/mirrored).
+*   You **cannot directly NAT traffic through WSL2** like in default mode because it doesn’t have a separate virtual NIC for outbound traffic.
+*   Instead, you need to configure **routing and firewall rules** so that WSL2 acts as a gateway for the VMs, while still using the mirrored interface for internet access.
+
+***
+
+### ✅ **Updated Strategy for Mirrored Mode**
+
+1.  **WSL2 mirrored mode** → WSL2 gets an IP from the same network as your Windows host (e.g., 192.168.x.x).
+2.  Create a **Hyper-V Internal Switch** for the VMs’ `eth1` network (172.16.1.0/27).
+3.  Assign WSL2 an additional IP on that internal switch (e.g., 172.16.1.1).
+4.  Enable **IP forwarding** on WSL2.
+5.  Use **policy-based routing and NAT** on WSL2 for traffic from 172.16.1.0/27 to go out via the mirrored interface.
+
+***
+
+### ✅ **WSL2 Configuration**
+
+1.  **Add secondary IP for lab network**
+    ```bash
+    sudo ip addr add 172.16.1.1/27 dev ethX   # ethX is the interface bound to the internal switch
+    ```
+
+2.  **Enable forwarding**
+    ```bash
+    sudo sysctl -w net.ipv4.ip_forward=1
+    echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
+    ```
+
+3.  **NAT for lab subnet**
+    Assuming mirrored interface is `eth0`:
+    ```bash
+    sudo iptables -t nat -A POSTROUTING -s 172.16.1.0/27 -o eth0 -j MASQUERADE
+    sudo iptables -A FORWARD -s 172.16.1.0/27 -j ACCEPT
+    ```
+
+***
+
+### ✅ **VM Routing**
+
+On each VM:
+
+```bash
+sudo ip route add default via 172.16.1.1
+```
+
+***
+
+### ✅ **Firewall Controls**
+
+*   On WSL2:
+    *   Allow forwarding only for 172.16.1.0/27.
+    *   Drop traffic from 172.16.0.0/27 (cluster network) to internet.
+    *   Allow SSH/HTTP/HTTPS from VMs if needed.
+
+Example:
+
+```bash
+sudo firewall-cmd --permanent --zone=lab --add-source=172.16.1.0/27
+sudo firewall-cmd --permanent --zone=lab --add-masquerade
+sudo firewall-cmd --permanent --zone=lab --add-service=ssh
+sudo firewall-cmd --permanent --zone=lab --add-service=http
+sudo firewall-cmd --permanent --zone=lab --add-service=https
+sudo firewall-cmd --reload
+```
+
+***
+
+### ✅ **Key Considerations**
+
+*   Mirrored mode means WSL2 uses the host NIC directly, so **no separate NAT network** like default WSL2.
+*   You need **Hyper-V Internal Switch** for the lab subnet.
+*   VIPs (172.16.1.30 downward) will work fine as long as ARP is handled correctly.
+
+***
+
+#### **Next Steps**
+
+Do you want me to:
+
+*   Draw a **network topology diagram** for this mirrored setup?
+*   Provide **full firewall-cmd script for WSL2 and VMs**?
+*   Show **Hyper-V switch configuration commands** for Windows PowerShell?
+
+Which one should I start with?
