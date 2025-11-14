@@ -65,3 +65,58 @@ Do you want me to:
 *   Or **configure systemd-resolved with DNS forwarding and local zones** for better integration?
 
 Also, should I include **firewall rules for DNS traffic (UDP/TCP 53)** in the lab zone?
+
+
+If you simply configure `8.8.8.8` (Google DNS) in each MicroOS VM’s `/etc/resolv.conf`, here’s what happens:
+
+***
+
+### ✅ **What Works**
+
+*   **External DNS resolution** will succeed *if*:
+    *   The VMs can reach the internet through WSL2 (NAT and routing are correctly configured).
+    *   UDP/TCP port 53 traffic is allowed through WSL2’s firewall and NAT rules.
+*   VMs will resolve public domains like `google.com`, `opensuse.org`, etc.
+
+***
+
+### ⚠️ **What Doesn’t Work**
+
+*   **Internal lab hostnames** (e.g., `mos01.lab.local`) will **NOT resolve**, because:
+    *   Google DNS only knows public domains.
+    *   No mechanism exists for custom lab names unless you manually edit `/etc/hosts` on each VM.
+
+***
+
+### ✅ **Implications**
+
+*   This is the simplest approach for outbound internet access.
+*   But it’s **not ideal for a lab environment** where you want:
+    *   Consistent internal name resolution.
+    *   Ability to add VIP names for services.
+
+***
+
+### ✅ **Firewall Considerations**
+
+*   Ensure WSL2 allows DNS traffic from 172.16.1.0/27:
+    ```bash
+    sudo firewall-cmd --permanent --zone=lab --add-port=53/udp
+    sudo firewall-cmd --permanent --zone=lab --add-port=53/tcp
+    sudo firewall-cmd --reload
+    ```
+*   NAT rules must allow UDP/TCP 53 to pass through.
+
+***
+
+### ✅ **Best Practice**
+
+*   Use `8.8.8.8` for quick setup, but **combine it with a local DNS forwarder** (dnsmasq or systemd-resolved on WSL2) for internal names.
+*   This way:
+    *   Internal names → resolved locally.
+    *   External names → forwarded to 8.8.8.8.
+
+***
+
+Do you want me to **write a dnsmasq configuration for WSL2 that forwards to 8.8.8.8 but also serves internal names for mos01, mos02, mos03 and VIPs**?  
+Or should I **give you the simplest script to just set up NAT and allow DNS traffic for the 8.8.8.8 approach**?
